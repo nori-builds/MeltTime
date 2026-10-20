@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="おくすり">
 <meta name="theme-color" content="#FFF7EC">
 <title>おくすりタイマー</title>
-<link rel="apple-touch-icon" id="touchIcon" href="">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root {
     --ink: #5B4636;
@@ -665,30 +667,11 @@
   $('voiceSw').onclick = () => { settings.voice = !settings.voice; save('settings', settings); renderSettings(); };
   $('testSound').onclick = () => { unlockAudio(); announce('gulp', 'ごっくん してね'); };
 
-  // ---------- ホーム画面アイコン ----------
-  function makeIcon() {
-    try {
-      const svg = pill({ face: 'happy', bg: '#FFE1D2' });
-      const img = new Image();
-      img.onload = () => {
-        const c = document.createElement('canvas');
-        c.width = c.height = 180;
-        const g = c.getContext('2d');
-        g.fillStyle = '#FFF7EC';
-        g.fillRect(0, 0, 180, 180);
-        g.drawImage(img, 6, 6, 168, 168);
-        $('touchIcon').href = c.toDataURL('image/png');
-      };
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    } catch {}
-  }
-
   // ---------- 起動 ----------
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   $('installHint').hidden = !(isIOS && !standalone);
   $('testBadge').hidden = !TEST;
-  makeIcon();
   renderHome();
   if (run) beginRunning();
 })();
