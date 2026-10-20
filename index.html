@@ -193,6 +193,21 @@
   .note { font-size: 13px; line-height: 1.7; color: var(--ink-soft); margin: 14px 4px 0; }
   .close-x { width: 40px; height: 40px; border-radius: 50%; background: #fff; font-size: 20px; }
 
+  /* ---------- つかいかた ---------- */
+  .top-btns { display: flex; gap: 8px; }
+  .icon-btn.help { font-size: 22px; font-weight: 800; }
+  .how, .faq { word-break: keep-all; overflow-wrap: anywhere; }
+  .how { list-style: none; margin: 0; padding: 0; }
+  .how li { background: #fff; border-radius: 16px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; font-size: 16px; line-height: 1.5; }
+  .how .n { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; border: 2px solid var(--line); }
+  .how b { font-weight: 800; }
+  .sheet h3 { font-size: 16px; margin: 18px 4px 8px; }
+  .faq { background: #fff; border-radius: 16px; padding: 4px 14px; }
+  .faq p { margin: 0; padding: 10px 0; font-size: 15px; font-weight: 700; line-height: 1.6; border-bottom: 1px solid var(--line); }
+  .faq p:last-child { border-bottom: 0; }
+  .faq small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 13px; }
+  .ok-btn { display: block; width: min(100%, 280px); margin: 18px auto 0; padding: 14px 0; border-radius: 99px; background: var(--coral); color: #fff; font-size: 20px; font-weight: 800; letter-spacing: .1em; }
+
   .toast {
     position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 24px); z-index: 40;
     transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
@@ -208,9 +223,12 @@
 <section id="home" class="screen active">
   <header class="top">
     <h1>おくすりタイマー<span id="testBadge" class="test-badge" hidden>テスト</span></h1>
+    <div class="top-btns">
+    <button id="openHelp" class="icon-btn help" aria-label="つかいかた">?</button>
     <button id="openSettings" class="icon-btn" aria-label="せってい">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
+    </div>
   </header>
   <div id="installHint" class="hint" hidden>
     Safari の <b>共有ボタン</b> →「<b>ホーム画面に追加</b>」で アプリとして つかえます。きろくは ホーム画面から ひらいたときに のこります。
@@ -291,6 +309,28 @@
       じかんは おくすりの せつめいしょ や おいしゃさんの しじに あわせてください。<br>
       きろくは この iPhone の なかだけに ほぞんされます。
     </p>
+  </div>
+</div>
+
+<!-- つかいかた -->
+<div id="help" class="sheet-bg" hidden>
+  <div class="sheet" role="dialog" aria-label="つかいかた">
+    <h2>つかいかた <button id="closeHelp" class="close-x" aria-label="とじる">✕</button></h2>
+    <ol class="how">
+      <li><span class="n" style="background:var(--coral);color:#fff;border-color:var(--coral)">1</span><span>「<b>はじめる</b>」を タップ</span></li>
+      <li><span class="n" style="background:var(--p1)">2</span><span>おくすりを <b>したの した</b>に おいて <span id="helpM1"></span> まつ</span></li>
+      <li><span class="n" style="background:var(--gulp)">3</span><span>チャイムが なって きいろく ひかったら <b>ごっくん</b></span></li>
+      <li><span class="n" style="background:var(--p2)">4</span><span><span id="helpM2"></span> は うがい・のみもの・たべものを <b>まつ</b></span></li>
+      <li><span class="n" style="background:var(--done)">5</span><span>みどりに なったら <b>おしまい！</b> スタンプが つくよ</span></li>
+    </ol>
+    <h3>こんな ときは</h3>
+    <div class="faq">
+      <p>とちゅうで やめたい<small>「ながおしで やめる」を ながく おしてね（ふつうに さわっても とまらないよ）</small></p>
+      <p>スタンプを なおしたい<small>カレンダーの ひづけを ながおしすると つけたり けしたり できるよ</small></p>
+      <p>じかんや こえを かえたい<small>みぎうえの はぐるま（せってい）から かえられるよ</small></p>
+      <p>おとが なるか しんぱい<small>せっていの「おとの テスト」で たしかめてね</small></p>
+    </div>
+    <button id="helpOk" class="ok-btn">わかった</button>
   </div>
 </div>
 
@@ -695,6 +735,18 @@
     };
   }
   $('voiceSw').onclick = () => { settings.voice = !settings.voice; save('settings', settings); renderSettings(); };
+  // ---------- つかいかた ----------
+  function openHelp() {
+    $('helpM1').textContent = fun(settings.m1);
+    $('helpM2').textContent = fun(settings.m2);
+    $('help').hidden = false;
+  }
+  function closeHelp() { $('help').hidden = true; save('helpSeen', true); }
+  $('openHelp').onclick = openHelp;
+  $('closeHelp').onclick = closeHelp;
+  $('helpOk').onclick = closeHelp;
+  $('help').addEventListener('click', e => { if (e.target.id === 'help') closeHelp(); });
+
   $('testSound').onclick = () => { unlockAudio(true); announce('gulp', 'ごっくん してね'); releaseMediaSession(8000); };
 
   // ---------- 起動 ----------
@@ -704,6 +756,7 @@
   $('testBadge').hidden = !TEST;
   renderHome();
   if (run) beginRunning();
+  else if (!load('helpSeen', false)) openHelp(); // はじめて ひらいたときだけ
 })();
 </script>
 </body>
