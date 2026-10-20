@@ -284,7 +284,7 @@
       <button id="voiceSw" class="switch" role="switch" aria-checked="true" aria-label="こえで しらせる"></button>
     </div>
     <div class="row">
-      <div class="lbl">おとの テスト<small>マナーモードだと きこえない ことが あります</small></div>
+      <div class="lbl">おとの テスト<small>マナーモードでも なります。ちいさい ときは よこの ボタンで おおきく してね</small></div>
       <button id="testSound" class="pill-btn">ならす</button>
     </div>
     <p class="note">
@@ -374,8 +374,36 @@
 
   // ---------- 音・声 ----------
   let actx = null;
-  function unlockAudio() {
+  // iPhone のマナーモードでも鳴らすため、無音の音声をループ再生して
+  // 「メディア再生」扱いにする（audioSession が無い古い iOS 向けの保険）
+  let silentEl = null, silentStopTimer = null;
+  function silentWavUrl() {
+    const rate = 8000, n = rate / 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE');
+    str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  function holdMediaSession() {
+    clearTimeout(silentStopTimer);
+    try {
+      if (!silentEl) {
+        silentEl = new Audio(silentWavUrl());
+        silentEl.loop = true;
+        silentEl.setAttribute('playsinline', '');
+      }
+      if (silentEl.paused) silentEl.play().catch(() => {});
+    } catch {}
+  }
+  function releaseMediaSession(after = 0) {
+    clearTimeout(silentStopTimer);
+    silentStopTimer = setTimeout(() => { if (!run) try { silentEl && silentEl.pause(); } catch {} }, after);
+  }
+  function unlockAudio(hold = !!run) {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    if (hold) holdMediaSession();
     try {
       if (!actx) {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -534,7 +562,7 @@
   let ticker = null, gulpTimer = null;
 
   function start() {
-    unlockAudio();
+    unlockAudio(true);
     speak('おくすりを したの したに おいてね');
     run = { startAt: Date.now(), m1: settings.m1, m2: settings.m2, fired1: false };
     save('run', run);
@@ -603,6 +631,7 @@
     $('doneMsg').textContent = already ? 'きょうの スタンプは もう あるよ' : 'スタンプ ゲット！';
     show('done');
     announce('done', 'おしまい！ よくできました');
+    releaseMediaSession(8000);
   }
 
   function stopRunning() {
@@ -626,6 +655,7 @@
         cancel();
         try { speechSynthesis.cancel(); } catch {}
         stopRunning();
+        releaseMediaSession();
         hideGulp();
         show('home');
         renderHome();
@@ -640,7 +670,7 @@
   $('backBtn').onclick = () => { show('home'); renderHome(); };
 
   // どこを触っても音のロックを解除する（再開時のため）
-  document.addEventListener('pointerdown', unlockAudio, { passive: true });
+  document.addEventListener('pointerdown', () => unlockAudio(), { passive: true });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && run) { keepAwake(); tick(); }
@@ -665,7 +695,7 @@
     };
   }
   $('voiceSw').onclick = () => { settings.voice = !settings.voice; save('settings', settings); renderSettings(); };
-  $('testSound').onclick = () => { unlockAudio(); announce('gulp', 'ごっくん してね'); };
+  $('testSound').onclick = () => { unlockAudio(true); announce('gulp', 'ごっくん してね'); releaseMediaSession(8000); };
 
   // ---------- 起動 ----------
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
