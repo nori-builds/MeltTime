@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="おくすり">
+<meta name="theme-color" content="#FFF7EC">
+<title>おくすりタイマー</title>
+<link rel="apple-touch-icon" id="touchIcon" href="">
+<style>
+  :root {
+    --ink: #5B4636;
+    --ink-soft: #9A8272;
+    --cream: #FFF7EC;
+    --card: #FFFFFF;
+    --line: #F1E2D1;
+    --coral: #FF8A5B;
+    --coral-dark: #E2683A;
+    --p1: #FFE1D2;
+    --p2: #DDD8FF;
+    --gulp: #FFE45C;
+    --done: #C9F2CB;
+    --font: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "M PLUS Rounded 1c", "Kosugi Maru", "BIZ UDPGothic", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--cream);
+    min-height: 100dvh;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+    transition: background-color .6s ease;
+  }
+  body[data-phase="1"] { background: var(--p1); }
+  body[data-phase="2"] { background: var(--p2); }
+  body[data-phase="done"] { background: var(--done); }
+  button { font-family: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 28px);
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- ホーム ---------- */
+  .top { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .top h1 { font-size: 20px; margin: 0; letter-spacing: .04em; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: 0 2px 0 var(--line); }
+  .icon-btn svg { width: 24px; height: 24px; }
+  .test-badge { font-size: 12px; background: #333; color: #fff; padding: 2px 8px; border-radius: 99px; margin-left: 8px; vertical-align: middle; }
+
+  .hint {
+    width: 100%; margin-top: 12px; padding: 10px 14px; border-radius: 14px;
+    background: #FFF1B8; font-size: 13px; line-height: 1.6;
+  }
+  .hint b { font-weight: 700; }
+
+  .chara { width: 200px; height: 200px; }
+  .chara svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  #homeChara { margin-top: 12px; animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+  .status {
+    margin: 4px 0 16px; padding: 8px 18px; border-radius: 99px;
+    background: var(--card); font-size: 17px; font-weight: 700; box-shadow: 0 2px 0 var(--line);
+  }
+  .status.ok { background: #DDF5DE; }
+
+  .start {
+    width: min(100%, 320px); padding: 22px 0 18px; border-radius: 32px;
+    background: var(--coral); color: #fff; box-shadow: 0 8px 0 var(--coral-dark);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform .08s, box-shadow .08s;
+  }
+  .start:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--coral-dark); }
+  .start .big { font-size: 40px; font-weight: 800; letter-spacing: .12em; }
+  .start .small { font-size: 16px; opacity: .95; }
+
+  .card { width: 100%; background: var(--card); border-radius: 24px; padding: 16px; margin-top: 32px; box-shadow: 0 3px 0 var(--line); }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; }
+  .cal-head h2 { font-size: 19px; margin: 0; }
+  .cal-head button { width: 44px; height: 44px; border-radius: 50%; font-size: 26px; background: var(--cream); }
+  .cal-head button:disabled { opacity: .3; }
+  .streak { text-align: center; margin: 6px 0 10px; font-size: 15px; color: var(--ink-soft); }
+  .streak b { color: var(--coral-dark); font-size: 22px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .wd { text-align: center; font-size: 12px; color: var(--ink-soft); padding-bottom: 2px; }
+  .wd:first-child { color: #E06A6A; }
+  .wd:last-child { color: #6A8FE0; }
+  .day {
+    position: relative; aspect-ratio: 1; border-radius: 12px; background: var(--cream);
+    display: flex; align-items: flex-start; justify-content: flex-start; padding: 3px 5px;
+    font-size: 12px; font-weight: 700; color: var(--ink-soft); overflow: hidden;
+  }
+  .day.today { outline: 3px solid var(--coral); outline-offset: -3px; color: var(--ink); }
+  .day.future { opacity: .4; }
+  .day.pressing { transform: scale(.92); transition: transform .5s; }
+  .day .st { position: absolute; inset: 1px; }
+  .day .st svg { width: 100%; height: 100%; display: block; }
+  .day.stamped { background: #fff; }
+  .day.stamped .num { position: absolute; top: 1px; left: 3px; z-index: 1; font-size: 10px; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff; }
+  .cal-note { font-size: 12px; color: var(--ink-soft); text-align: center; margin: 10px 0 0; }
+
+  /* ---------- タイマー ---------- */
+  .steps { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-top: 8px; }
+  .step { padding: 6px 14px; border-radius: 99px; background: rgba(255,255,255,.5); color: var(--ink-soft); }
+  .step.on { background: #fff; color: var(--ink); box-shadow: 0 2px 0 rgba(0,0,0,.06); }
+  .step.fin { text-decoration: line-through; }
+  .run-title { font-size: 26px; margin: 18px 0 8px; text-align: center; line-height: 1.4; }
+  .ring-wrap { position: relative; width: min(78vw, 320px); aspect-ratio: 1; margin: 6px 0; }
+  .ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 9; }
+  .ring-bg { stroke: rgba(255,255,255,.65); }
+  .ring-fg { stroke: var(--coral); stroke-linecap: round; stroke-dasharray: 339.29; transition: stroke-dashoffset .3s linear; }
+  body[data-phase="2"] .ring-fg { stroke: #7C6CF0; }
+  .ring-wrap .chara { position: absolute; inset: 16%; width: auto; height: auto; }
+  .time { font-size: 76px; font-weight: 800; letter-spacing: .02em; font-variant-numeric: tabular-nums; line-height: 1; margin-top: 4px; }
+  .run-sub { font-size: 18px; text-align: center; line-height: 1.6; margin: 12px 0 0; min-height: 3.2em; }
+  .hold {
+    position: relative; overflow: hidden; margin-top: auto; padding: 14px 28px; border-radius: 99px;
+    background: rgba(255,255,255,.7); font-size: 16px; font-weight: 700; color: var(--ink-soft);
+  }
+  .hold::before {
+    content: ""; position: absolute; inset: 0; background: rgba(226,104,58,.35);
+    transform: scaleX(0); transform-origin: left; transition: transform .15s;
+  }
+  .hold.holding::before { transform: scaleX(1); transition: transform var(--hold-ms, 1200ms) linear; }
+  .hold span { position: relative; }
+  .awake-note { font-size: 13px; color: var(--ink-soft); margin: 10px 0 0; }
+
+  .zzz text { font-family: var(--font); font-weight: 800; fill: #7C6CF0; animation: zz 2.4s ease-in-out infinite; }
+  .zzz text:nth-child(2) { animation-delay: .8s; }
+  .zzz text:nth-child(3) { animation-delay: 1.6s; }
+  @keyframes zz { 0% { opacity: 0; transform: translate(0,0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px,-22px); } }
+
+  /* ---------- ごっくん ---------- */
+  .overlay {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 24px;
+  }
+  .overlay[hidden] { display: none; }
+  .gulp { background: var(--gulp); animation: flash .5s ease-in-out 3 alternate; }
+  @keyframes flash { from { background: var(--gulp); } to { background: #FFF6B0; } }
+  .gulp .chara { width: 220px; height: 220px; animation: pop .5s cubic-bezier(.3,1.6,.5,1); }
+  .gulp-text { font-size: clamp(44px, 15vw, 72px); white-space: nowrap; font-weight: 800; letter-spacing: .06em; margin-top: 8px; }
+  .gulp p { font-size: 24px; margin: 8px 0 0; font-weight: 700; }
+  @keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+
+  /* ---------- おしまい ---------- */
+  #done { justify-content: center; text-align: center; }
+  .done-title { font-size: clamp(44px, 14vw, 64px); white-space: nowrap; font-weight: 800; letter-spacing: .06em; }
+  .done-sub { font-size: 24px; font-weight: 700; margin: 4px 0 12px; }
+  .stamp-pop { width: 200px; height: 200px; animation: stamp .7s cubic-bezier(.3,1.7,.5,1); }
+  .stamp-pop svg { width: 100%; height: 100%; }
+  @keyframes stamp { 0% { transform: scale(2.2) rotate(-20deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+  .done-msg { font-size: 18px; margin: 14px 0 28px; font-weight: 700; }
+  .back { width: min(100%, 280px); padding: 18px 0; font-size: 26px; font-weight: 800; letter-spacing: .1em; border-radius: 28px; background: #fff; box-shadow: 0 6px 0 #9BD69F; }
+  .back:active { transform: translateY(4px); box-shadow: 0 2px 0 #9BD69F; }
+
+  /* ---------- 設定 ---------- */
+  .sheet-bg { position: fixed; inset: 0; z-index: 30; background: rgba(60,40,30,.4); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet-bg[hidden] { display: none; }
+  .sheet {
+    width: 100%; max-width: 520px; background: var(--cream); border-radius: 24px 24px 0 0;
+    padding: 20px 16px calc(env(safe-area-inset-bottom) + 20px); max-height: 90dvh; overflow-y: auto;
+  }
+  .sheet h2 { margin: 0 0 14px; font-size: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .row { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .row .lbl { font-weight: 700; font-size: 16px; line-height: 1.4; }
+  .row .lbl small { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button { width: 40px; height: 40px; border-radius: 50%; background: var(--cream); font-size: 22px; font-weight: 800; }
+  .stepper output { min-width: 56px; text-align: center; font-size: 20px; font-weight: 800; }
+  .switch { width: 56px; height: 32px; border-radius: 99px; background: #DDD; position: relative; transition: background .2s; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch[aria-checked="true"] { background: var(--coral); }
+  .switch[aria-checked="true"]::after { transform: translateX(24px); }
+  .pill-btn { flex: none; white-space: nowrap; padding: 10px 16px; border-radius: 99px; background: var(--coral); color: #fff; font-weight: 700; font-size: 15px; }
+  .note { font-size: 13px; line-height: 1.7; color: var(--ink-soft); margin: 14px 4px 0; }
+  .close-x { width: 40px; height: 40px; border-radius: 50%; background: #fff; font-size: 20px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 24px); z-index: 40;
+    transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 99px; font-size: 15px; font-weight: 700;
+    transition: opacity .25s, transform .25s; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body data-phase="home">
+
+<!-- ホーム -->
+<section id="home" class="screen active">
+  <header class="top">
+    <h1>おくすりタイマー<span id="testBadge" class="test-badge" hidden>テスト</span></h1>
+    <button id="openSettings" class="icon-btn" aria-label="せってい">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+  <div id="installHint" class="hint" hidden>
+    Safari の <b>共有ボタン</b> →「<b>ホーム画面に追加</b>」で アプリとして つかえます。きろくは ホーム画面から ひらいたときに のこります。
+  </div>
+  <div id="homeChara" class="chara"></div>
+  <p id="todayStatus" class="status"></p>
+  <button id="startBtn" class="start">
+    <span class="big">はじめる</span>
+    <span id="startSub" class="small"></span>
+  </button>
+  <section class="card">
+    <div class="cal-head">
+      <button id="prevM" aria-label="まえの つき">‹</button>
+      <h2 id="calTitle"></h2>
+      <button id="nextM" aria-label="つぎの つき">›</button>
+    </div>
+    <p id="streak" class="streak"></p>
+    <div id="calGrid" class="grid"></div>
+    <p class="cal-note">ひづけを ながおしすると スタンプを つけたり けしたり できるよ</p>
+  </section>
+</section>
+
+<!-- タイマー -->
+<section id="run" class="screen">
+  <div class="steps">
+    <span id="st1" class="step">① したの した</span>
+    <span>→</span>
+    <span id="st2" class="step">② おやすみ</span>
+  </div>
+  <h2 id="runTitle" class="run-title"></h2>
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="54"/><circle id="ringFg" class="ring-fg" cx="60" cy="60" r="54"/></svg>
+    <div id="runChara" class="chara"></div>
+  </div>
+  <div id="time" class="time">0:00</div>
+  <p id="runSub" class="run-sub"></p>
+  <button id="stopBtn" class="hold"><span>ながおしで やめる</span></button>
+  <p id="awakeNote" class="awake-note" hidden>がめんを つけたままに してね</p>
+</section>
+
+<!-- ごっくん -->
+<div id="gulp" class="overlay gulp" hidden>
+  <div id="gulpChara" class="chara"></div>
+  <div class="gulp-text">ごっくん！</div>
+  <p>のみこんでね</p>
+</div>
+
+<!-- おしまい -->
+<section id="done" class="screen">
+  <div class="done-title">おしまい！</div>
+  <div class="done-sub">よくできました</div>
+  <div id="doneStamp" class="stamp-pop"></div>
+  <p id="doneMsg" class="done-msg"></p>
+  <button id="backBtn" class="back">もどる</button>
+</section>
+
+<!-- 設定 -->
+<div id="settings" class="sheet-bg" hidden>
+  <div class="sheet" role="dialog" aria-label="せってい">
+    <h2>せってい <button id="closeSettings" class="close-x" aria-label="とじる">✕</button></h2>
+    <div class="row">
+      <div class="lbl">① したの した<small>おくすりを したの したに おく じかん</small></div>
+      <div class="stepper"><button data-k="m1" data-d="-1">−</button><output id="m1Out"></output><button data-k="m1" data-d="1">＋</button></div>
+    </div>
+    <div class="row">
+      <div class="lbl">② おやすみ<small>うがい・のみもの・たべものを まつ じかん</small></div>
+      <div class="stepper"><button data-k="m2" data-d="-1">−</button><output id="m2Out"></output><button data-k="m2" data-d="1">＋</button></div>
+    </div>
+    <div class="row">
+      <div class="lbl">こえで しらせる<small>チャイムの あとに よみあげます</small></div>
+      <button id="voiceSw" class="switch" role="switch" aria-checked="true" aria-label="こえで しらせる"></button>
+    </div>
+    <div class="row">
+      <div class="lbl">おとの テスト<small>マナーモードだと きこえない ことが あります</small></div>
+      <button id="testSound" class="pill-btn">ならす</button>
+    </div>
+    <p class="note">
+      じかんは おくすりの せつめいしょ や おいしゃさんの しじに あわせてください。<br>
+      きろくは この iPhone の なかだけに ほぞんされます。
+    </p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  // ---------- 定数・保存 ----------
+  const TEST = new URLSearchParams(location.search).has('test');
+  const UNIT = TEST ? 5000 : 60000; // 1分あたりのミリ秒（テストモードは5秒）
+  const KEY = TEST ? 'melttime-test.' : 'melttime.';
+  const INK = '#5B4636';
+
+  const load = (k, fallback) => {
+    try { const v = localStorage.getItem(KEY + k); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  };
+  const save = (k, v) => {
+    try { v == null ? localStorage.removeItem(KEY + k) : localStorage.setItem(KEY + k, JSON.stringify(v)); } catch {}
+  };
+
+  let settings = Object.assign({ m1: 1, m2: 5, voice: true }, load('settings', {}));
+  let stamps = new Set(load('stamps', []));
+  let run = load('run', null);
+
+  const saveStamps = () => save('stamps', [...stamps].sort());
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2, '0');
+  const dateKey = d => { d = new Date(d); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const fun = n => ([1, 3, 6, 8, 0].includes(n % 10) ? `${n}ぷん` : `${n}ふん`);
+
+  // ---------- キャラクター ----------
+  const S = `fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"`;
+  const dot = (x, r = 6) => `<circle cx="${x}" cy="106" r="${r}" fill="${INK}"/>`;
+  const smileUp = x => `<path d="M${x - 8} 110 Q${x} 98 ${x + 8} 110" ${S}/>`;
+  const star = x => `<path d="M${x} 95 l3.5 7.2 7.9 1.1 -5.7 5.6 1.4 7.9 -7.1 -3.7 -7.1 3.7 1.4 -7.9 -5.7 -5.6 7.9 -1.1z" fill="#FFC93C" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`;
+  const openMouth = `<path d="M87 124 Q100 146 113 124 Z" fill="#FF7A7A" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`;
+  const smile = `<path d="M89 126 Q100 137 111 126" ${S}/>`;
+  const FACES = {
+    normal: dot(78) + dot(122) + smile,
+    gulp: `<circle cx="78" cy="104" r="9" fill="${INK}"/><circle cx="81" cy="101" r="3" fill="#fff"/><circle cx="122" cy="104" r="9" fill="${INK}"/><circle cx="125" cy="101" r="3" fill="#fff"/><circle cx="100" cy="130" r="8" fill="${INK}"/>`,
+    sleep: `<path d="M70 106 Q78 113 86 106" ${S}/><path d="M114 106 Q122 113 130 106" ${S}/><ellipse cx="100" cy="128" rx="4" ry="5" fill="${INK}"/>`,
+    happy: smileUp(78) + smileUp(122) + openMouth,
+    wink: smileUp(78) + dot(122) + openMouth,
+    star: star(78) + star(122) + openMouth,
+    tongue: dot(78) + dot(122) + `<path d="M93 128 Q93 142 100 142 Q107 142 107 128" fill="#FF8FA3" stroke="${INK}" stroke-width="4"/>` + `<path d="M86 126 Q100 134 114 126" ${S}/>`,
+    blush: `<path d="M70 104 l16 4" ${S}/><path d="M130 104 l-16 4" ${S}/>` + smile,
+  };
+  const ZZZ = `<g class="zzz"><text x="150" y="70" font-size="22">z</text><text x="162" y="50" font-size="17">z</text><text x="172" y="34" font-size="13">z</text></g>`;
+
+  function pill({ face = 'normal', melt = 0, zzz = false, bg = null } = {}) {
+    const sy = 1 - 0.55 * melt, sx = 1 + 0.2 * melt;
+    const puddle = melt > 0.02
+      ? `<ellipse cx="100" cy="170" rx="${34 + 54 * melt}" ry="${4 + 10 * melt}" fill="#FFFDF7" stroke="${INK}" stroke-width="5"/>`
+      : '';
+    return `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      ${bg ? `<circle cx="100" cy="102" r="94" fill="${bg}"/>` : ''}
+      ${puddle}
+      <g transform="translate(100 170) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(-100 -170)">
+        <path d="M100 56 Q97 44 104 36" ${S}/>
+        <path d="M104 38 Q118 24 132 32 Q120 46 104 38 Z" fill="#9BDB8E" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+        <circle cx="100" cy="112" r="58" fill="#FFFDF7" stroke="${INK}" stroke-width="5"/>
+        <ellipse cx="74" cy="80" rx="13" ry="7" fill="#FFE9D9" transform="rotate(-28 74 80)"/>
+        <ellipse cx="64" cy="124" rx="10" ry="6" fill="#FFB8B0" opacity=".85"/>
+        <ellipse cx="136" cy="124" rx="10" ry="6" fill="#FFB8B0" opacity=".85"/>
+        ${FACES[face] || FACES.normal}
+      </g>
+      ${zzz ? ZZZ : ''}
+    </svg>`;
+  }
+
+  const STAMP_VARIANTS = [
+    ['happy', '#FFD6C2'], ['wink', '#FFF0A8'], ['star', '#D8EEFF'],
+    ['tongue', '#FFD9E6'], ['blush', '#DDF5C8'], ['happy', '#E6DEFF'],
+  ];
+  function stampFor(key) {
+    let h = 0;
+    for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const [face, bg] = STAMP_VARIANTS[h % STAMP_VARIANTS.length];
+    return pill({ face, bg });
+  }
+
+  // ---------- 音・声 ----------
+  let actx = null;
+  function unlockAudio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    try {
+      if (!actx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) actx = new AC();
+      }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch {}
+  }
+  function tone(freq, at, dur, vol = 0.35) {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(actx.destination);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
+  function chime(kind) {
+    if (!actx) return;
+    try {
+      const t = actx.currentTime + 0.05;
+      const notes = kind === 'done'
+        ? [[784, 0], [988, 0.18], [1175, 0.36], [1568, 0.54]]
+        : [[1046, 0], [784, 0.45], [1046, 1.2], [784, 1.65]];
+      for (const [f, d] of notes) { tone(f, t + d, 1.0); tone(f * 2, t + d, 0.5, 0.08); }
+    } catch {}
+  }
+  let jaVoice = null;
+  function pickVoice() {
+    try { jaVoice = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('ja')) || null; } catch {}
+  }
+  if ('speechSynthesis' in window) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+  function speak(text) {
+    if (!settings.voice || !('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 0.95;
+      u.pitch = 1.25;
+      if (jaVoice) u.voice = jaVoice;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+  function announce(kind, text) {
+    chime(kind);
+    setTimeout(() => speak(text), kind === 'done' ? 1300 : 2400);
+  }
+
+  // ---------- 画面をつけっぱなしにする ----------
+  let wakeLock = null;
+  async function keepAwake() {
+    if (!('wakeLock' in navigator)) { $('awakeNote').hidden = false; return; }
+    try {
+      if (!wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch { $('awakeNote').hidden = false; }
+  }
+  function releaseAwake() {
+    try { wakeLock && wakeLock.release(); } catch {}
+    wakeLock = null;
+  }
+
+  // ---------- 画面切り替え ----------
+  function show(id, phase) {
+    for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === id);
+    document.body.dataset.phase = phase || id;
+    window.scrollTo(0, 0);
+  }
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ---------- ホーム ----------
+  let calMonth = new Date(); calMonth.setDate(1);
+
+  function renderHome() {
+    const done = stamps.has(dateKey(Date.now()));
+    $('homeChara').innerHTML = pill({ face: done ? 'happy' : 'normal' });
+    const st = $('todayStatus');
+    st.textContent = done ? 'きょうは もう のんだよ ✓' : 'けさの おくすり まだだよ';
+    st.classList.toggle('ok', done);
+    $('startSub').textContent = `${fun(settings.m1)} → ${fun(settings.m2)}`;
+    renderCal();
+  }
+
+  function streak() {
+    const d = new Date();
+    if (!stamps.has(dateKey(d))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (stamps.has(dateKey(d))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  function renderCal() {
+    const y = calMonth.getFullYear(), m = calMonth.getMonth();
+    const now = new Date();
+    $('calTitle').textContent = `${y}ねん ${m + 1}がつ`;
+    $('nextM').disabled = y > now.getFullYear() || (y === now.getFullYear() && m >= now.getMonth());
+    const n = streak();
+    $('streak').innerHTML = n > 0 ? `れんぞく <b>${n}</b> にち！` : 'きょうから はじめよう';
+    const todayKey = dateKey(now);
+    let html = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'].map(w => `<div class="wd">${w}</div>`).join('');
+    const first = new Date(y, m, 1).getDay();
+    const days = new Date(y, m + 1, 0).getDate();
+    for (let i = 0; i < first; i++) html += '<div></div>';
+    for (let d = 1; d <= days; d++) {
+      const k = `${y}-${pad(m + 1)}-${pad(d)}`;
+      const has = stamps.has(k);
+      const cls = ['day', has && 'stamped', k === todayKey && 'today', k > todayKey && 'future'].filter(Boolean).join(' ');
+      html += `<div class="${cls}" data-key="${k}">${has ? `<div class="st">${stampFor(k)}</div>` : ''}<span class="num">${d}</span></div>`;
+    }
+    $('calGrid').innerHTML = html;
+  }
+
+  // カレンダーの長押しでスタンプを手直し
+  (() => {
+    const grid = $('calGrid');
+    let timer = null, cell = null, sx = 0, sy = 0;
+    const cancel = () => { clearTimeout(timer); timer = null; cell && cell.classList.remove('pressing'); cell = null; };
+    grid.addEventListener('pointerdown', e => {
+      const c = e.target.closest('.day');
+      if (!c || c.classList.contains('future')) return;
+      cell = c; sx = e.clientX; sy = e.clientY;
+      c.classList.add('pressing');
+      timer = setTimeout(() => {
+        const k = c.dataset.key;
+        if (stamps.has(k)) { stamps.delete(k); toast('スタンプを けしたよ'); }
+        else { stamps.add(k); toast('スタンプを つけたよ'); }
+        saveStamps();
+        cancel();
+        renderHome();
+      }, 650);
+    });
+    grid.addEventListener('pointermove', e => { if (cell && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) grid.addEventListener(ev, cancel);
+    grid.addEventListener('contextmenu', e => e.preventDefault());
+  })();
+
+  $('prevM').onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCal(); };
+  $('nextM').onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCal(); };
+
+  // ---------- タイマー ----------
+  let ticker = null, gulpTimer = null;
+
+  function start() {
+    unlockAudio();
+    speak('おくすりを したの したに おいてね');
+    run = { startAt: Date.now(), m1: settings.m1, m2: settings.m2, fired1: false };
+    save('run', run);
+    beginRunning();
+  }
+
+  function beginRunning() {
+    show('run', '1');
+    keepAwake();
+    clearInterval(ticker);
+    ticker = setInterval(tick, 250);
+    tick();
+  }
+
+  function tick() {
+    if (!run) return;
+    const el = Date.now() - run.startAt;
+    const t1 = run.m1 * UNIT, t2 = t1 + run.m2 * UNIT;
+    if (el >= t2) return finish();
+    const phase = el < t1 ? 1 : 2;
+    if (phase === 2 && !run.fired1) {
+      run.fired1 = true;
+      save('run', run);
+      // 1分の終わりから時間がたちすぎていたら、ごっくん画面は出さない
+      if (el - t1 < 30000) showGulp();
+    }
+    const total = phase === 1 ? t1 : run.m2 * UNIT;
+    const passed = phase === 1 ? el : el - t1;
+    const left = Math.max(0, Math.ceil((total - passed) / 1000));
+    const p = Math.min(1, passed / total);
+
+    if (document.body.dataset.phase !== String(phase)) document.body.dataset.phase = String(phase);
+    $('st1').className = 'step ' + (phase === 1 ? 'on' : 'fin');
+    $('st2').className = 'step' + (phase === 2 ? ' on' : '');
+    $('runTitle').textContent = phase === 1 ? 'したの したで とかしてね' : 'おやすみ タイム';
+    $('runSub').innerHTML = phase === 1
+      ? 'おくすりを したの したに おいて<br>そのまま まってね'
+      : 'うがい・のみもの・たべものは<br>まだ まってね';
+    $('time').textContent = `${Math.floor(left / 60)}:${pad(left % 60)}`;
+    $('ringFg').style.strokeDashoffset = (339.29 * p).toFixed(2);
+
+    const face = phase === 1 ? 'normal' : 'sleep';
+    const melt = phase === 1 ? Math.round(p * 20) / 20 : 1;
+    const sig = face + melt;
+    const rc = $('runChara');
+    if (rc.dataset.sig !== sig) { rc.dataset.sig = sig; rc.innerHTML = pill({ face, melt, zzz: phase === 2 }); }
+  }
+
+  function showGulp() {
+    $('gulpChara').innerHTML = pill({ face: 'gulp' });
+    $('gulp').hidden = false;
+    announce('gulp', 'ごっくん してね');
+    clearTimeout(gulpTimer);
+    gulpTimer = setTimeout(hideGulp, 4500);
+  }
+  function hideGulp() { clearTimeout(gulpTimer); $('gulp').hidden = true; }
+  $('gulp').addEventListener('click', hideGulp);
+
+  function finish() {
+    const key = dateKey(run.startAt);
+    const already = stamps.has(key);
+    if (!already) { stamps.add(key); saveStamps(); }
+    stopRunning();
+    hideGulp();
+    $('doneStamp').innerHTML = stampFor(key);
+    $('doneMsg').textContent = already ? 'きょうの スタンプは もう あるよ' : 'スタンプ ゲット！';
+    show('done');
+    announce('done', 'おしまい！ よくできました');
+  }
+
+  function stopRunning() {
+    clearInterval(ticker);
+    ticker = null;
+    run = null;
+    save('run', null);
+    releaseAwake();
+  }
+
+  // 「やめる」は長押しだけ
+  (() => {
+    const btn = $('stopBtn'), MS = 1200;
+    let t = null;
+    btn.style.setProperty('--hold-ms', MS + 'ms');
+    const cancel = () => { clearTimeout(t); t = null; btn.classList.remove('holding'); };
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      btn.classList.add('holding');
+      t = setTimeout(() => {
+        cancel();
+        try { speechSynthesis.cancel(); } catch {}
+        stopRunning();
+        hideGulp();
+        show('home');
+        renderHome();
+        toast('とちゅうで やめたよ');
+      }, MS);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, cancel);
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  })();
+
+  $('startBtn').onclick = start;
+  $('backBtn').onclick = () => { show('home'); renderHome(); };
+
+  // どこを触っても音のロックを解除する（再開時のため）
+  document.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && run) { keepAwake(); tick(); }
+  });
+
+  // ---------- 設定 ----------
+  const LIMITS = { m1: [1, 10], m2: [1, 30] };
+  function renderSettings() {
+    $('m1Out').textContent = fun(settings.m1);
+    $('m2Out').textContent = fun(settings.m2);
+    $('voiceSw').setAttribute('aria-checked', String(settings.voice));
+  }
+  $('openSettings').onclick = () => { renderSettings(); $('settings').hidden = false; };
+  $('closeSettings').onclick = () => { $('settings').hidden = true; renderHome(); };
+  $('settings').addEventListener('click', e => { if (e.target.id === 'settings') { $('settings').hidden = true; renderHome(); } });
+  for (const b of document.querySelectorAll('.stepper button')) {
+    b.onclick = () => {
+      const k = b.dataset.k, [lo, hi] = LIMITS[k];
+      settings[k] = Math.min(hi, Math.max(lo, settings[k] + Number(b.dataset.d)));
+      save('settings', settings);
+      renderSettings();
+    };
+  }
+  $('voiceSw').onclick = () => { settings.voice = !settings.voice; save('settings', settings); renderSettings(); };
+  $('testSound').onclick = () => { unlockAudio(); announce('gulp', 'ごっくん してね'); };
+
+  // ---------- ホーム画面アイコン ----------
+  function makeIcon() {
+    try {
+      const svg = pill({ face: 'happy', bg: '#FFE1D2' });
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 180;
+        const g = c.getContext('2d');
+        g.fillStyle = '#FFF7EC';
+        g.fillRect(0, 0, 180, 180);
+        g.drawImage(img, 6, 6, 168, 168);
+        $('touchIcon').href = c.toDataURL('image/png');
+      };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    } catch {}
+  }
+
+  // ---------- 起動 ----------
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  $('installHint').hidden = !(isIOS && !standalone);
+  $('testBadge').hidden = !TEST;
+  makeIcon();
+  renderHome();
+  if (run) beginRunning();
+})();
+</script>
+</body>
+</html>
