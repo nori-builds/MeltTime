@@ -475,7 +475,23 @@
   }
   let jaVoice = null;
   function pickVoice() {
-    try { jaVoice = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('ja')) || null; } catch {}
+    try {
+      const ja = speechSynthesis.getVoices().filter(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith('ja'));
+      ja.sort((a, b) => voiceScore(b) - voiceScore(a));
+      jaVoice = ja[0] || null;
+    } catch {}
+  }
+  // 高品質版（拡張・プレミアム・ニューラル）を優先し、簡易版は後回しにする
+  function voiceScore(v) {
+    const s = (v.name + ' ' + v.voiceURI).toLowerCase();
+    let score = 0;
+    if (/premium|プレミアム/.test(s)) score += 40;
+    if (/enhanced|拡張/.test(s)) score += 30;
+    if (/natural|neural|siri/.test(s)) score += 30;
+    if (/google/.test(s)) score += 15;
+    if (/compact|eloquence/.test(s)) score -= 20;
+    if (v.localService) score += 1;
+    return score;
   }
   if ('speechSynthesis' in window) {
     pickVoice();
@@ -488,7 +504,6 @@
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'ja-JP';
       u.rate = 0.95;
-      u.pitch = 1.25;
       if (jaVoice) u.voice = jaVoice;
       speechSynthesis.speak(u);
     } catch {}
